@@ -94,7 +94,7 @@ class CenterHead(nn.Module):
             self.class_names_each_head.append([x for x in cur_class_names if x in class_names])
             cur_class_id_mapping = torch.from_numpy(np.array(
                 [self.class_names.index(x) for x in cur_class_names if x in class_names]
-            )).cuda()
+            )).long()
             self.class_id_mapping_each_head.append(cur_class_id_mapping)
         
         total_classes = sum([len(x) for x in self.class_names_each_head])
@@ -209,7 +209,10 @@ class CenterHead(nn.Module):
 
     def generate_predicted_boxes(self, batch_size, pred_dicts):
         post_process_cfg = self.POST_PROCESSING
-        post_center_limit_range = torch.tensor(post_process_cfg['POST_CENTER_LIMIT_RANGE']).cuda().float()
+        device = pred_dicts[0]['hm'].device
+        post_center_limit_range = torch.tensor(
+            post_process_cfg['POST_CENTER_LIMIT_RANGE'], device=device, dtype=torch.float32
+        )
 
         ret_dict = [{
             'pred_boxes': [],
@@ -236,7 +239,8 @@ class CenterHead(nn.Module):
             )
                 
             for k, final_dict in enumerate(final_pred_dicts):
-                final_dict['pred_labels'] = self.class_id_mapping_each_head[idx][final_dict['pred_labels'].long()]
+                mapping = self.class_id_mapping_each_head[idx].to(device)
+                final_dict['pred_labels'] = mapping[final_dict['pred_labels'].long()]
                 selected, selected_scores = model_nms_utils.class_agnostic_nms(
                     box_scores=final_dict['pred_scores'], box_preds=final_dict['pred_boxes'],
                     nms_config=post_process_cfg['NMS_CONFIG'],

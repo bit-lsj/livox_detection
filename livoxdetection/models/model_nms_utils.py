@@ -16,7 +16,8 @@ def class_agnostic_nms(box_scores, box_preds, nms_config, score_thresh=None):
     if box_scores.shape[0] > 0:
         box_scores_nms, indices = torch.topk(box_scores, k=min(nms_config['NMS_PRE_MAXSIZE'], box_scores.shape[0]))
         boxes_for_nms = box_preds[indices]
-        keep_idx, selected_scores = getattr(iou3d_nms_utils, nms_config['NMS_TYPE'])(
+        nms_type = nms_config['NMS_TYPE'] if boxes_for_nms.is_cuda else 'nms_cpu'
+        keep_idx, selected_scores = getattr(iou3d_nms_utils, nms_type)(
                 boxes_for_nms[:, 0:7], box_scores_nms, nms_config['NMS_THRESH'], **nms_config
         )
         selected = indices[keep_idx[:nms_config['NMS_POST_MAXSIZE']]]
@@ -52,7 +53,8 @@ def multi_classes_nms(cls_scores, box_preds, nms_config, score_thresh=None):
         if box_scores.shape[0] > 0:
             box_scores_nms, indices = torch.topk(box_scores, k=min(nms_config['NMS_PRE_MAXSIZE'], box_scores.shape[0]))
             boxes_for_nms = cur_box_preds[indices]
-            keep_idx, selected_scores = getattr(iou3d_nms_utils, nms_config['NMS_TYPE'])(
+            nms_type = nms_config['NMS_TYPE'] if boxes_for_nms.is_cuda else 'nms_cpu'
+            keep_idx, selected_scores = getattr(iou3d_nms_utils, nms_type)(
                     boxes_for_nms[:, 0:7], box_scores_nms, nms_config['NMS_THRESH'], **nms_config
             )
             selected = indices[keep_idx[:nms_config['NMS_POST_MAXSIZE']]]

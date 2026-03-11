@@ -1,6 +1,7 @@
 build/
+livoxdetection.egg-info/
+
 *.pyc
 *.txt
 *.so
-PKG-INFO
 *.bag

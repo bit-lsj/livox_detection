@@ -123,7 +123,8 @@ class ROS_MODULE:
         pred_dicts[0]['pred_boxes'] = pred_dicts[0]['pred_boxes'].cpu().numpy()
         pred_dicts[0]['pred_scores'] = pred_dicts[0]['pred_scores'].cpu().numpy()
         pred_dicts[0]['pred_labels'] = pred_dicts[0]['pred_labels'].cpu().numpy()
-        torch.cuda.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         return data_dict, pred_dicts
  
     def ros_print(self, pts, pred_dicts=None, last_box_num=None, gt_boxes=None, last_gtbox_num=None):

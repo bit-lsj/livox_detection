@@ -7,6 +7,7 @@ Some codes are modified from the OpenPCDet.
 
 import os
 import glob
+import time
 import datetime
 import argparse
 from pathlib import Path
@@ -98,10 +99,16 @@ def parse_config():
     return args
 
 class ros_demo():
-    def __init__(self, model, args=None):
+    def __init__(self, model, device, args=None):
         self.args = args
         self.model = model
-        self.starter, self.ender = torch.cuda.Event(enable_timing=True), torch.cuda.Event(enable_timing=True)
+        self.device = device
+        self.use_cuda = device.type == 'cuda'
+        if self.use_cuda:
+            self.starter = torch.cuda.Event(enable_timing=True)
+            self.ender = torch.cuda.Event(enable_timing=True)
+        else:
+            self.starter = self.ender = None
 
         self.offset_angle = 0
         self.offset_ground = 1.8 
@@ -129,12 +136,11 @@ class ros_demo():
         return data_dict
     
     @staticmethod
-    def load_data_to_gpu(batch_dict):
+    def load_data_to_device(batch_dict, device):
         for key, val in batch_dict.items():
             if not isinstance(val, np.ndarray):
                 continue
-            else:
-                batch_dict[key] = torch.from_numpy(val).float().cuda()
+            batch_dict[key] = torch.from_numpy(val).float().to(device)
 
     @staticmethod
     def collate_batch(batch_list, _unused=False):
@@ -157,16 +163,21 @@ class ros_demo():
     def online_inference(self, msg):
         data_dict = self.receive_from_ros(msg)
         data_infer = ros_demo.collate_batch([data_dict])
-        ros_demo.load_data_to_gpu(data_infer)
-        
+        ros_demo.load_data_to_device(data_infer, self.device)
+
         self.model.eval()
-        with torch.no_grad(): 
-            torch.cuda.synchronize()
-            self.starter.record()
+        with torch.no_grad():
+            if self.use_cuda:
+                torch.cuda.synchronize()
+                self.starter.record()
+            t0 = time.perf_counter()
             pred_dicts = self.model.forward(data_infer)
-            self.ender.record()
-            torch.cuda.synchronize()
-            curr_latency = self.starter.elapsed_time(self.ender)
+            if self.use_cuda:
+                self.ender.record()
+                torch.cuda.synchronize()
+                curr_latency = self.starter.elapsed_time(self.ender)
+            else:
+                curr_latency = (time.perf_counter() - t0) * 1000.0
         print('det_time(ms): ', curr_latency)
         
         data_infer, pred_dicts = ROS_MODULE.gpu2cpu(data_infer, pred_dicts)
@@ -176,15 +187,17 @@ class ros_demo():
 
 if __name__ == '__main__':
     args = parse_config()
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device("cpu")
     model = LD_base()
 
-    checkpoint = torch.load(args.pt, map_location=torch.device('cpu'))  
-    model.load_state_dict({k.replace('module.', ''):v for k, v in checkpoint['model_state_dict'].items()})
-    model.cuda()
+    checkpoint = torch.load(args.pt, map_location=device)
+    model.load_state_dict({k.replace('module.', ''): v for k, v in checkpoint['model_state_dict'].items()})
+    model.to(device)
 
-    demo_ros = ros_demo(model, args)
+    demo_ros = ros_demo(model, device, args)
     sub = rospy.Subscriber(
-        "/livox/lidar", PointCloud2, queue_size=10, callback=demo_ros.online_inference)
+        "/livox/lidar_3JEDM4V001UY261", PointCloud2, queue_size=10, callback=demo_ros.online_inference)
     print("set up subscriber!")
 
     rospy.spin()

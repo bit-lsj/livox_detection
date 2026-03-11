@@ -45,9 +45,12 @@ class BoolMap(nn.Module):
                 batch_dict['spatial_features'] = spatial_features (B,C,H,W)
 
         """
-        pc_lidar = batch_dict['points'].clone() 
-
-        bev_img = torch.cuda.BoolTensor(batch_dict['batch_size'],self.BEV_C,self.BEV_H,self.BEV_W).fill_(0)
+        pc_lidar = batch_dict['points'].clone()
+        device = pc_lidar.device
+        bev_img = torch.zeros(
+            batch_dict['batch_size'], self.BEV_C, self.BEV_H, self.BEV_W,
+            dtype=torch.bool, device=device
+        )
         pc_lidar[:,1]=((pc_lidar[:,1]-self.m_x_min)/self.DX)
         pc_lidar[:,2]=((pc_lidar[:,2]-self.m_y_min)/self.DY)
         pc_lidar[:,3]=((pc_lidar[:,3]-self.m_z_min)/self.DZ)
