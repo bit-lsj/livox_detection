@@ -228,7 +228,7 @@ class ROS_MODULE:
                 marker.lifetime = rospy.Duration(0)
 
                 # print(labs)
-                color = color_maps[self.class_names[np.int(label[obid])-1]]
+                color = color_maps[self.class_names[int(label[obid])-1]]
 
                 marker.color.r = color[0]
                 marker.color.g = color[1]
@@ -254,7 +254,7 @@ class ROS_MODULE:
                 markert.lifetime = rospy.Duration(0)
 
                 # print(labs)
-                color = color_maps[self.class_names[np.int(label[obid])-1]]
+                color = color_maps[self.class_names[int(label[obid])-1]]
 
                 markert.color.r = color[0]
                 markert.color.g = color[1]
