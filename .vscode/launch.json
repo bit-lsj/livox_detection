@@ -1,0 +1,21 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Debug test_ros.py",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${workspaceFolder}/tools/test_ros.py",
+        "cwd": "${workspaceFolder}/tools",
+        "console": "integratedTerminal",
+        "justMyCode": false,
+        "args": [
+          "--pt",
+          "../pt/livox_model_1.pt"
+        ],
+        "env": {
+          "PYTHONUNBUFFERED": "1"
+        }
+      }
+    ]
+  }
